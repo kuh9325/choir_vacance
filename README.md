@@ -35,9 +35,13 @@ npm run build
 
 ## Cloudflare 배포
 
-이 프로젝트는 `.openai/hosting.json`의 D1 바인딩과 `@openai/sites-vite-plugin`을 포함합니다. Codex Sites 배포를 사용하면 D1 생성 및 연결이 자동 처리됩니다.
+독립 Cloudflare Workers 배포 설정은 `wrangler.jsonc`에 있습니다. 연결된 D1 데이터베이스의 바인딩 이름은 `DB`입니다.
 
-GitHub 기반 Cloudflare 배포를 사용할 때는 저장소를 Cloudflare Workers Builds에 연결하고 빌드 명령을 `npm run build`로 설정합니다. D1 데이터베이스를 생성한 뒤 바인딩 이름을 `DB`로 지정하고, `drizzle/0000_lethal_black_crow.sql`을 적용합니다.
+```bash
+npm run deploy
+```
+
+GitHub 기반 Cloudflare Workers Builds에서는 빌드 명령을 `npm run build`, 배포 명령을 `npx wrangler deploy`로 설정합니다. 새 D1 데이터베이스를 사용할 때는 `drizzle/0000_lethal_black_crow.sql`을 먼저 적용해야 합니다.
 
 ## 점수 규칙
 
