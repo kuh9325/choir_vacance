@@ -80,8 +80,8 @@ export function makeTeam(index: number, treasureCount = 5): Team {
 
 export const DEFAULT_STATE: EventState = {
   eventName: '2026 가을 실내 게임데이',
-  eventDate: '2026-09-05',
-  adminPin: '0905',
+  eventDate: '2026-09-12',
+  adminPin: '0912',
   teams: Array.from({ length: 5 }, (_, index) => makeTeam(index)),
   programIndex: 0,
   programStartedAt: null,
