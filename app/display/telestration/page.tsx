@@ -1,9 +1,9 @@
 import { TelestrationDynamicApp } from '@/components/TelestrationDynamicApp';
-import { TelestrationScoreRibbon } from '@/components/TelestrationScoreRibbon';
+import { TelestrationScoreRibbonDynamic } from '@/components/TelestrationScoreRibbonDynamic';
 
 export default function TelestrationDisplayPage() {
   return <>
     <TelestrationDynamicApp mode="display" />
-    <TelestrationScoreRibbon />
+    <TelestrationScoreRibbonDynamic />
   </>;
 }
