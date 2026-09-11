@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { CharadesApp } from '@/components/CharadesApp';
+import { CharadesThemePicker } from '@/components/CharadesThemePicker';
 import { ScoreApp } from '@/components/ScoreApp';
 import { TelestrationDynamicApp } from '@/components/TelestrationDynamicApp';
 import { TelestrationScoreRibbonDynamic } from '@/components/TelestrationScoreRibbonDynamic';
@@ -57,7 +58,7 @@ export function EventDisplayRouter() {
   }, []);
 
   if (!ready) return <main className={styles.displayLoading}>전광판 준비 중…</main>;
-  if (state.activeMode === 'charades') return <CharadesApp mode="display" />;
+  if (state.activeMode === 'charades') return <><CharadesApp mode="display" /><CharadesThemePicker /></>;
   if (state.activeMode === 'telestration') return <><TelestrationDynamicApp mode="display" /><TelestrationScoreRibbonDynamic /></>;
   return <ScoreApp mode="display" />;
 }
