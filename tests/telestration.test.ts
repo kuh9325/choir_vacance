@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DEFAULT_TELESTRATION_STATE, TELESTRATION_PROMPTS, nextStage, normalizeTelestrationState, promptFor, stageDuration } from '../lib/telestration';
+import { DEFAULT_TELESTRATION_STATE, TELESTRATION_PROMPTS, nextStage, normalizeTelestrationState, promptFor, roleOrder, stageDuration, stageRoleNumber } from '../lib/telestration';
 
 const tests: Array<[string, () => void]> = [];
 const test = (name: string, run: () => void) => tests.push([name, run]);
@@ -28,6 +28,14 @@ test('단계 순서가 준비 → 그림 → 추측 → 그림 → 최종답 →
   assert.equal(nextStage('guess1'), 'draw2');
   assert.equal(nextStage('draw2'), 'finalGuess');
   assert.equal(nextStage('finalGuess'), 'judge');
+});
+
+test('4개 라운드에서 첫 그림 담당이 1·2·3·4번으로 한 번씩 회전한다', () => {
+  assert.deepEqual(roleOrder(0), [1, 2, 3, 4]);
+  assert.deepEqual(roleOrder(1), [2, 3, 4, 1]);
+  assert.deepEqual(roleOrder(2), [3, 4, 1, 2]);
+  assert.deepEqual(roleOrder(3), [4, 1, 2, 3]);
+  assert.deepEqual([0, 1, 2, 3].map((round) => stageRoleNumber(round, 'draw1')), [1, 2, 3, 4]);
 });
 
 test('라운드와 팀 인덱스가 범위를 벗어나도 안전하게 제시어를 반환한다', () => {
