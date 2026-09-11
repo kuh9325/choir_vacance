@@ -1,9 +1,9 @@
 import { CharadesApp } from '@/components/CharadesApp';
-import { CharadesThemePicker } from '@/components/CharadesThemePicker';
+import { CharadesThemeDisplay } from '@/components/CharadesThemePicker';
 
 export default function CharadesDisplayPage() {
   return <>
     <CharadesApp mode="display" />
-    <CharadesThemePicker />
+    <CharadesThemeDisplay />
   </>;
 }
