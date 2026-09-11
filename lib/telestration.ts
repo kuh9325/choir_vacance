@@ -28,7 +28,7 @@ export const TELESTRATION_PROMPTS: TelestrationPrompt[][] = [
   [
     { text: '눈사람', accepted: ['눈사람'] },
     { text: '보물상자', accepted: ['보물상자', '보물 상자'] },
-    { text: '생일 케이크', accepted: ['생일 케이크', '생일케이크', '케이크'] },
+    { text: '생일 케이크', accepted: ['생일 케이크', '생일케이크', '생일 축하 케이크'] },
     { text: '모래성', accepted: ['모래성', '모래 성'] },
     { text: '풍선다발', accepted: ['풍선다발', '풍선 다발', '풍선 묶음'] },
   ],
@@ -57,11 +57,11 @@ export const TELESTRATION_PROMPTS: TelestrationPrompt[][] = [
 
 export const TELESTRATION_STAGE_META: Record<TelestrationStage, { title: string; instruction: string; timed: boolean }> = {
   setup: { title: '시작 전', instruction: '진행 설정을 확인해 주세요.', timed: false },
-  ready: { title: '제시어 확인', instruction: '각 팀 1번만 진행자에게 제시어를 확인하세요.', timed: false },
-  draw1: { title: '첫 번째 그림', instruction: '1번: 제시어를 그림으로 표현하세요. 글자와 숫자는 금지!', timed: true },
-  guess1: { title: '첫 번째 추측', instruction: '2번: 그림만 보고 단어를 적으세요.', timed: true },
-  draw2: { title: '두 번째 그림', instruction: '3번: 전달받은 단어를 다시 그림으로 표현하세요.', timed: true },
-  finalGuess: { title: '최종 정답', instruction: '4번: 마지막 그림만 보고 최종 답을 적으세요.', timed: true },
+  ready: { title: '제시어 확인', instruction: '이번 라운드의 첫 그림 담당만 제시어를 확인하세요.', timed: false },
+  draw1: { title: '첫 번째 그림', instruction: '제시어를 그림으로 표현하세요. 글자와 숫자는 금지!', timed: true },
+  guess1: { title: '첫 번째 추측', instruction: '앞사람의 그림만 보고 단어를 적으세요.', timed: true },
+  draw2: { title: '두 번째 그림', instruction: '전달받은 단어를 다시 그림으로 표현하세요.', timed: true },
+  finalGuess: { title: '최종 정답', instruction: '마지막 그림만 보고 최종 답을 적으세요.', timed: true },
   judge: { title: '정답 확인', instruction: '처음 제시어와 최종 답을 비교합니다.', timed: false },
   finished: { title: '게임 종료', instruction: '4개 라운드가 모두 끝났습니다.', timed: false },
 };
@@ -97,6 +97,20 @@ export function normalizeTelestrationState(raw: Partial<TelestrationState> | nul
 
 export function promptFor(roundIndex: number, teamIndex: number) {
   return TELESTRATION_PROMPTS[Math.max(0, Math.min(3, roundIndex))][Math.max(0, Math.min(4, teamIndex))];
+}
+
+export function roleOrder(roundIndex: number) {
+  const start = Math.max(0, Math.min(3, roundIndex));
+  return Array.from({ length: 4 }, (_, offset) => ((start + offset) % 4) + 1);
+}
+
+export function stageRoleNumber(roundIndex: number, stage: TelestrationStage) {
+  const roles = roleOrder(roundIndex);
+  if (stage === 'ready' || stage === 'draw1') return roles[0];
+  if (stage === 'guess1') return roles[1];
+  if (stage === 'draw2') return roles[2];
+  if (stage === 'finalGuess') return roles[3];
+  return null;
 }
 
 export function stageDuration(state: TelestrationState, stage: TelestrationStage) {
