@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CharadesApp } from '@/components/CharadesApp';
 import { ScoreApp } from '@/components/ScoreApp';
 import { TelestrationDynamicApp } from '@/components/TelestrationDynamicApp';
-import { TelestrationScoreRibbon } from '@/components/TelestrationScoreRibbon';
+import { TelestrationScoreRibbonDynamic } from '@/components/TelestrationScoreRibbonDynamic';
 import { DEFAULT_STATE, EventState, normalizeState } from '@/lib/game';
 import styles from './EventNavigation.module.css';
 
@@ -58,6 +58,6 @@ export function EventDisplayRouter() {
 
   if (!ready) return <main className={styles.displayLoading}>전광판 준비 중…</main>;
   if (state.activeMode === 'charades') return <CharadesApp mode="display" />;
-  if (state.activeMode === 'telestration') return <><TelestrationDynamicApp mode="display" /><TelestrationScoreRibbon /></>;
+  if (state.activeMode === 'telestration') return <><TelestrationDynamicApp mode="display" /><TelestrationScoreRibbonDynamic /></>;
   return <ScoreApp mode="display" />;
 }
