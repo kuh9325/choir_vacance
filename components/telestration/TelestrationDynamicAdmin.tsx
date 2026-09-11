@@ -25,6 +25,9 @@ function remainingSeconds(live: LiveStore, plan: ReturnType<typeof buildTelestra
 
 function sessionRemaining(live: LiveStore, now: number) {
   const { state } = live;
+  const waitingForFirstStart = state.stage === 'setup'
+    || (state.currentRound === 0 && state.stage === 'ready' && state.timerStatus === 'idle');
+  if (waitingForFirstStart) return state.sessionSeconds;
   return state.sessionStartedAt ? Math.max(0, state.sessionSeconds - Math.floor((now - state.sessionStartedAt) / 1000)) : state.sessionSeconds;
 }
 
@@ -49,12 +52,14 @@ export function TelestrationDynamicAdmin({ live, score, memberCounts }: { live: 
   }, [commit, now, state.stageEndsAt, state.timerStatus]);
 
   const startStep = (step: number) => commit((draft) => {
+    const firstActualStart = draft.currentRound === 0 && draft.stage === 'ready' && step === 0;
     draft.stage = 'chain';
     draft.chainStep = step;
     draft.timerStatus = 'running';
     draft.stageEndsAt = Date.now() + stepDuration(plan, step) * 1000;
     draft.pausedRemainingSeconds = null;
-    draft.sessionStartedAt ??= Date.now();
+    if (firstActualStart) draft.sessionStartedAt = Date.now();
+    else draft.sessionStartedAt ??= Date.now();
   });
 
   const advance = () => {
