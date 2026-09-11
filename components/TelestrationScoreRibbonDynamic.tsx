@@ -21,7 +21,7 @@ export function TelestrationScoreRibbonDynamic() {
           {Array.from({ length: 4 }, (_, index) => {
             const success = Boolean(team.teleRounds[index]);
             const done = index < live.state.currentRound || live.state.stage === 'judge' || live.state.stage === 'finished';
-            return <span key={index} className={success ? styles.success : done ? styles.fail : ''}>{index + 1}</span>;
+            return <span key={index} className={success ? styles.success : done ? styles.failed : ''}>{index + 1}</span>;
           })}
         </div>
       </article>)}
