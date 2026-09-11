@@ -1,10 +1,10 @@
 import { GameAdminReturnBridge } from '@/components/GameAdminReturnBridge';
-import { TelestrationApp } from '@/components/TelestrationApp';
+import { TelestrationDynamicApp } from '@/components/TelestrationDynamicApp';
 import { TelestrationScoreDock } from '@/components/TelestrationScoreDock';
 
 export default function TelestrationAdminPage() {
   return <>
-    <TelestrationApp mode="admin" />
+    <TelestrationDynamicApp mode="admin" />
     <TelestrationScoreDock />
     <GameAdminReturnBridge mode="telestration" />
   </>;
