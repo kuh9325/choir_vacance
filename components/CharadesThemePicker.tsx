@@ -17,9 +17,8 @@ function selectedTheme(state: CharadesState): Theme {
   return values.every((value) => value === first) ? first : 'mix';
 }
 
-export function CharadesThemePicker() {
+function useCharadesThemeState() {
   const [state, setState] = useState<CharadesState>(() => structuredClone(DEFAULT_CHARADES_STATE));
-  const [saving, setSaving] = useState(false);
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
@@ -60,8 +59,14 @@ export function CharadesThemePicker() {
     return () => { clearInterval(timer); channel.close(); };
   }, []);
 
+  return { state, setState, stateRef };
+}
+
+export function CharadesThemePicker() {
+  const { state, setState, stateRef } = useCharadesThemeState();
+  const [saving, setSaving] = useState(false);
   const theme = useMemo(() => selectedTheme(state), [state]);
-  if (state.phase !== 'setup') return null;
+  if (state.phase !== 'setup' && state.phase !== 'ready') return null;
 
   const choose = async (nextTheme: Theme) => {
     const next = structuredClone(stateRef.current);
@@ -91,8 +96,8 @@ export function CharadesThemePicker() {
 
   return <section className={styles.picker} aria-label="몸으로 말해요 테마 선택">
     <div className={styles.head}>
-      <div><p>CHOOSE A THEME</p><h2>오늘의 테마를 골라주세요</h2></div>
-      <span>선택한 테마는 모든 팀에 적용됩니다 · 자동 믹스는 턴마다 주제가 바뀝니다</span>
+      <div><p>THEME CONTROL</p><h2>몸으로 말해요 테마 선택</h2></div>
+      <span>관리자 전용 · 선택 결과는 전광판에 표시만 됩니다</span>
     </div>
     <div className={styles.themes}>
       <button className={theme === 'mix' ? styles.active : ''} onClick={() => void choose('mix')}><b>🎲</b><span>자동 믹스</span></button>
@@ -100,4 +105,17 @@ export function CharadesThemePicker() {
     </div>
     <div className={styles.saving}>{saving ? '테마 저장 중…' : theme === 'mix' ? '현재: 자동 믹스' : `현재: ${CHARADES_CATEGORIES.find((category) => category.id === theme)?.label ?? ''}`}</div>
   </section>;
+}
+
+export function CharadesThemeDisplay() {
+  const { state } = useCharadesThemeState();
+  const theme = useMemo(() => selectedTheme(state), [state]);
+  if (state.phase !== 'setup' && state.phase !== 'ready') return null;
+  const category = theme === 'mix' ? null : CHARADES_CATEGORIES.find((item) => item.id === theme);
+
+  return <aside className={styles.displayTheme} aria-label="몸으로 말해요 선택 테마">
+    <span>오늘의 테마</span>
+    <strong>{category ? `${category.emoji} ${category.label}` : '🎲 자동 믹스'}</strong>
+    <small>{category ? '모든 팀 동일 테마' : '턴마다 주제가 바뀝니다'}</small>
+  </aside>;
 }
