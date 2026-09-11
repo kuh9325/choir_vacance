@@ -65,8 +65,17 @@ function useCharadesThemeState() {
 export function CharadesThemePicker() {
   const { state, setState, stateRef } = useCharadesThemeState();
   const [saving, setSaving] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const theme = useMemo(() => selectedTheme(state), [state]);
-  if (state.phase !== 'setup' && state.phase !== 'ready') return null;
+
+  useEffect(() => {
+    const check = () => setUnlocked(sessionStorage.getItem('game-score-admin') === 'yes');
+    check();
+    const timer = window.setInterval(check, 400);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!unlocked || (state.phase !== 'setup' && state.phase !== 'ready')) return null;
 
   const choose = async (nextTheme: Theme) => {
     const next = structuredClone(stateRef.current);
