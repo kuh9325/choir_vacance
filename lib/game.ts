@@ -1,4 +1,5 @@
 export type GameKey = 'tele' | 'pac' | 'hunt';
+export type ActiveMode = 'score' | 'charades' | 'telestration';
 
 export type Treasure = {
   found: boolean;
@@ -34,6 +35,7 @@ export type EventState = {
   teams: Team[];
   programIndex: number;
   programStartedAt: number | null;
+  activeMode: ActiveMode;
   scoresVisible: boolean;
   displayView: 'overall' | 'current' | 'results';
   resultReveal: number;
@@ -85,6 +87,7 @@ export const DEFAULT_STATE: EventState = {
   teams: Array.from({ length: 5 }, (_, index) => makeTeam(index)),
   programIndex: 0,
   programStartedAt: null,
+  activeMode: 'score',
   scoresVisible: true,
   displayView: 'overall',
   resultReveal: 0,
@@ -104,9 +107,13 @@ export const DEFAULT_STATE: EventState = {
 export function normalizeState(raw: Partial<EventState> | null | undefined): EventState {
   if (!raw) return structuredClone(DEFAULT_STATE);
   const base = structuredClone(DEFAULT_STATE);
+  const activeMode: ActiveMode = raw.activeMode === 'charades' || raw.activeMode === 'telestration' || raw.activeMode === 'score'
+    ? raw.activeMode
+    : 'score';
   return {
     ...base,
     ...raw,
+    activeMode,
     maxScores: { ...base.maxScores, ...(raw.maxScores ?? {}) },
     teams: (raw.teams?.length ? raw.teams : base.teams).map((team, index) => ({
       ...makeTeam(index),
