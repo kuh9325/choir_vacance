@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_STATE, EventState, PROGRAMS, normalizeState } from '@/lib/game';
+import { ActiveMode, DEFAULT_STATE, EventState, PROGRAMS, normalizeState } from '@/lib/game';
 import styles from './EventNavigation.module.css';
 
 const STORAGE_KEY = 'game-score-state-v1';
@@ -51,11 +51,12 @@ export function AdminGameLauncher() {
     return () => { clearInterval(timer); channel.close(); };
   }, []);
 
-  const launch = async (programIndex: 0 | 1, href: string, label: string) => {
+  const launch = async (programIndex: 0 | 1, mode: Exclude<ActiveMode, 'score'>, href: string, label: string) => {
     setSwitching(label);
     const next = structuredClone(stateRef.current);
     next.programIndex = programIndex;
     next.programStartedAt = Date.now();
+    next.activeMode = mode;
     next.displayView = 'current';
     if (programIndex === 0) next.charadesComplete = false;
     next.updatedAt = Date.now();
@@ -83,11 +84,11 @@ export function AdminGameLauncher() {
 
   return <aside className={styles.launcher} aria-label="게임 진행 바로가기">
     <div className={styles.launchInfo}><span>현재 프로그램</span><strong>{currentName}</strong></div>
-    <button className={state.programIndex === 0 ? styles.active : ''} disabled={Boolean(switching)} onClick={() => void launch(0, '/admin/charades', '몸으로 말해요')}>
-      <b>몸으로 말해요</b><small>{state.programIndex === 0 ? '현재 프로그램' : '진행 화면 열기'}</small>
+    <button className={state.activeMode === 'charades' ? styles.active : ''} disabled={Boolean(switching)} onClick={() => void launch(0, 'charades', '/admin/charades', '몸으로 말해요')}>
+      <b>몸으로 말해요</b><small>{state.activeMode === 'charades' ? '진행 중' : '진행 화면 열기'}</small>
     </button>
-    <button className={state.programIndex === 1 ? styles.active : ''} disabled={Boolean(switching)} onClick={() => void launch(1, '/admin/telestration', '텔레스트레이션')}>
-      <b>텔레스트레이션</b><small>{state.programIndex === 1 ? '현재 프로그램' : '진행 화면 열기'}</small>
+    <button className={state.activeMode === 'telestration' ? styles.active : ''} disabled={Boolean(switching)} onClick={() => void launch(1, 'telestration', '/admin/telestration', '텔레스트레이션')}>
+      <b>텔레스트레이션</b><small>{state.activeMode === 'telestration' ? '진행 중' : '진행 화면 열기'}</small>
     </button>
     {switching && <em>{switching} 전환 중…</em>}
   </aside>;
