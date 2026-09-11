@@ -22,13 +22,20 @@ function remainingSeconds(live: LiveStore, plan: ReturnType<typeof buildTelestra
   return state.stage === 'chain' ? stepDuration(plan, state.chainStep) : 0;
 }
 
+function overallRemainingSeconds(state: LiveStore['state'], now: number) {
+  const waitingForFirstStart = state.stage === 'setup'
+    || (state.currentRound === 0 && state.stage === 'ready' && state.timerStatus === 'idle');
+  if (waitingForFirstStart) return state.sessionSeconds;
+  return state.sessionStartedAt ? Math.max(0, state.sessionSeconds - Math.floor((now - state.sessionStartedAt) / 1000)) : state.sessionSeconds;
+}
+
 export function TelestrationDynamicDisplay({ live, score, memberCounts }: { live: LiveStore; score: ScoreStore; memberCounts: Record<string, number> }) {
   const state = live.state;
   const teams = score.state.teams;
   const now = useTelestrationClock();
   const plan = useMemo(() => buildTelestrationPlan(teams.map((team) => team.id), memberCounts, state.sessionSeconds), [teams, memberCounts, state.sessionSeconds]);
   const remaining = remainingSeconds(live, plan, now);
-  const overallRemaining = state.sessionStartedAt ? Math.max(0, state.sessionSeconds - Math.floor((now - state.sessionStartedAt) / 1000)) : state.sessionSeconds;
+  const overallRemaining = overallRemainingSeconds(state, now);
 
   if (!live.ready || !score.ready) return <main className={styles.display}><div className={styles.displayLoading}>텔레스트레이션 준비 중…</div></main>;
 
