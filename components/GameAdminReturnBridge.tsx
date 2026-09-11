@@ -42,13 +42,14 @@ export function GameAdminReturnBridge({ mode }: { mode: Mode }) {
 
     const next = structuredClone(current);
     const now = Date.now();
+    next.activeMode = 'score';
     if (mode === 'charades') {
       next.charadesComplete = true;
       next.programIndex = 1;
-      next.logs = [{ id: crypto.randomUUID(), at: now, text: '몸으로 말해요 종료 · 텔레스트레이션으로 이동' }, ...next.logs].slice(0, 100);
+      next.logs = [{ id: crypto.randomUUID(), at: now, text: '몸으로 말해요 종료 · 기본 관리자/전광판으로 복귀' }, ...next.logs].slice(0, 100);
     } else {
       next.programIndex = 2;
-      next.logs = [{ id: crypto.randomUUID(), at: now, text: '텔레스트레이션 종료 · 바닥팩맨으로 이동' }, ...next.logs].slice(0, 100);
+      next.logs = [{ id: crypto.randomUUID(), at: now, text: '텔레스트레이션 종료 · 기본 관리자/전광판으로 복귀' }, ...next.logs].slice(0, 100);
     }
     next.programStartedAt = now;
     next.displayView = 'current';
