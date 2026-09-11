@@ -11,7 +11,9 @@ import {
   nextStage,
   normalizeTelestrationState,
   promptFor,
+  roleOrder,
   stageDuration,
+  stageRoleNumber,
 } from '@/lib/telestration';
 import styles from './TelestrationApp.module.css';
 
@@ -142,26 +144,38 @@ function useScoreStore(): ScoreStore {
       const incoming = normalizeState(event.data as EventState);
       if (incoming.updatedAt > stateRef.current.updatedAt) { stateRef.current = incoming; setState(incoming); }
     };
-    try {
-      const local = normalizeState(JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY) ?? 'null'));
-      stateRef.current = local; setState(local);
-    } catch { /* ignore */ }
+    let local = structuredClone(DEFAULT_STATE);
+    try { local = normalizeState(JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY) ?? 'null')); } catch { /* ignore */ }
+    stateRef.current = local; setState(local);
+
     const pull = async (initial = false) => {
       try {
         const response = await fetch('/api/state', { cache: 'no-store' });
         if (!response.ok) throw new Error('load failed');
         const remote = normalizeState(await response.json() as EventState);
         setOnline(true);
-        if (remote.updatedAt >= stateRef.current.updatedAt || initial) {
+        const current = stateRef.current;
+        if (remote.updatedAt > current.updatedAt || (initial && current.updatedAt === 0)) {
           stateRef.current = remote; setState(remote); saveLocal(remote);
+        } else if (initial && current.updatedAt > remote.updatedAt) {
+          void pushRemote(current);
         }
       } catch { setOnline(false); }
       finally { if (initial) setReady(true); }
     };
     void pull(true);
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void pull(false); }, 900);
-    return () => { clearInterval(timer); channelRef.current?.close(); };
-  }, [saveLocal]);
+    const handleOnline = () => { setOnline(true); void pushRemote(stateRef.current); };
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      clearInterval(timer);
+      channelRef.current?.close();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [pushRemote, saveLocal]);
 
   const setRoundResult = useCallback((teamId: string, roundIndex: number, success: boolean) => {
     const next = structuredClone(stateRef.current);
@@ -199,6 +213,16 @@ function sessionRemaining(state: TelestrationState, now: number) {
   return Math.max(0, state.sessionSeconds - Math.floor((now - state.sessionStartedAt) / 1000));
 }
 
+function stageInstruction(state: TelestrationState) {
+  const member = stageRoleNumber(state.currentRound, state.stage);
+  if (state.stage === 'ready') return `각 팀 ${member}번만 진행자에게 제시어를 확인하세요.`;
+  if (state.stage === 'draw1') return `${member}번: 제시어를 그림으로 표현하세요. 글자와 숫자는 금지!`;
+  if (state.stage === 'guess1') return `${member}번: 앞사람의 그림만 보고 단어를 적으세요.`;
+  if (state.stage === 'draw2') return `${member}번: 전달받은 단어를 다시 그림으로 표현하세요.`;
+  if (state.stage === 'finalGuess') return `${member}번: 마지막 그림만 보고 최종 답을 적으세요.`;
+  return TELESTRATION_STAGE_META[state.stage].instruction;
+}
+
 function PinGate({ pin, children }: { pin: string; children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(() => typeof window !== 'undefined' && sessionStorage.getItem('game-score-admin') === 'yes');
   const [value, setValue] = useState('');
@@ -212,8 +236,10 @@ function Admin({ live, score }: { live: LiveStore; score: ScoreStore }) {
   const now = useClock();
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const meta = TELESTRATION_STAGE_META[state.stage];
+  const instruction = stageInstruction(state);
   const remaining = stageRemaining(state, now);
   const overallRemaining = sessionRemaining(state, now);
+  const roles = roleOrder(state.currentRound);
 
   useEffect(() => { setRevealed({}); }, [state.currentRound]);
   useEffect(() => {
@@ -261,7 +287,6 @@ function Admin({ live, score }: { live: LiveStore; score: ScoreStore }) {
     draft.timerStatus = 'running';
   });
 
-  if (!score.ready) return <main className={styles.loading}>점수판 정보를 불러오는 중…</main>;
   const teams = score.state.teams.slice(0, 5);
   const nextLabel = state.stage === 'setup' ? '게임 준비 시작' : state.stage === 'ready' ? '첫 그림 시작' : state.stage === 'draw1' ? '추측 단계로' : state.stage === 'guess1' ? '두 번째 그림으로' : state.stage === 'draw2' ? '최종 정답으로' : state.stage === 'finalGuess' ? '정답 확인' : state.stage === 'judge' ? (state.currentRound === 3 ? '게임 종료' : '다음 라운드') : '';
 
@@ -269,8 +294,8 @@ function Admin({ live, score }: { live: LiveStore; score: ScoreStore }) {
     <header><div><p>TELESTRATION CONTROL</p><h1>텔레스트레이션 LIVE</h1><small>{score.state.eventName}</small></div><nav><span>{live.syncing ? '동기화 중…' : live.online && score.online ? '● 실시간 연결' : '● 오프라인'}</span><a href="/display/telestration" target="_blank" rel="noreferrer">전광판 ↗</a><a href="/admin">점수판 →</a></nav></header>
 
     <section className={styles.hero}>
-      <div className={styles.heroTop}><b>ROUND {state.currentRound + 1}/4</b><b>전체 남은 시간 {formatCountdown(overallRemaining)}</b></div>
-      <div className={styles.stage}><div><small>현재 단계</small><h2>{meta.title}</h2><p>{meta.instruction}</p></div><div className={state.timerStatus === 'expired' ? styles.timeExpired : styles.time}><small>단계 타이머</small><strong>{formatCountdown(remaining)}</strong><em>{state.timerStatus === 'expired' ? '시간 종료' : state.timerStatus === 'paused' ? '일시정지' : state.timerStatus === 'running' ? '진행 중' : '대기'}</em></div></div>
+      <div className={styles.heroTop}><b>ROUND {state.currentRound + 1}/4 · 역할 {roles.join(' → ')}</b><b>전체 남은 시간 {formatCountdown(overallRemaining)}</b></div>
+      <div className={styles.stage}><div><small>현재 단계</small><h2>{meta.title}</h2><p>{instruction}</p></div><div className={state.timerStatus === 'expired' ? styles.timeExpired : styles.time}><small>단계 타이머</small><strong>{formatCountdown(remaining)}</strong><em>{state.timerStatus === 'expired' ? '시간 종료' : state.timerStatus === 'paused' ? '일시정지' : state.timerStatus === 'running' ? '진행 중' : '대기'}</em></div></div>
       <div className={styles.actions}>
         {state.stage !== 'finished' && <button className={styles.primary} onClick={advance}>{nextLabel} →</button>}
         {state.timerStatus === 'running' && <button onClick={pause}>Ⅱ 일시정지</button>}
@@ -279,11 +304,11 @@ function Admin({ live, score }: { live: LiveStore; score: ScoreStore }) {
       </div>
     </section>
 
-    {state.stage !== 'setup' && state.stage !== 'finished' && <section className={styles.prompts}><div className={styles.sectionHead}><div><p>PRIVATE PROMPTS</p><h2>{state.currentRound + 1}라운드 팀별 제시어</h2></div><button onClick={() => setRevealed({})}>모두 가리기</button></div><p className={styles.notice}>제시어는 이 관리자 화면에서만 보입니다. 각 팀의 1번에게 해당 카드만 보여 주세요.</p><div className={styles.promptGrid}>{teams.map((team, index) => { const prompt = promptFor(state.currentRound, index); const isOpen = Boolean(revealed[team.id]); return <button key={team.id} className={styles.promptCard} style={{ '--team': team.color } as React.CSSProperties} onClick={() => setRevealed((current) => ({ ...current, [team.id]: !current[team.id] }))}><span>{team.name}</span><strong>{isOpen ? prompt.text : '••••••••'}</strong><em>{isOpen ? '탭하여 가리기' : '탭하여 제시어 보기'}</em></button>; })}</div></section>}
+    {state.stage !== 'setup' && state.stage !== 'finished' && <section className={styles.prompts}><div className={styles.sectionHead}><div><p>PRIVATE PROMPTS</p><h2>{state.currentRound + 1}라운드 팀별 제시어 · 첫 그림 {roles[0]}번</h2></div><button onClick={() => setRevealed({})}>모두 가리기</button></div><p className={styles.notice}>제시어는 이 관리자 화면에서만 보입니다. 각 팀의 {roles[0]}번에게 해당 카드만 보여 주세요.</p><div className={styles.promptGrid}>{teams.map((team, index) => { const prompt = promptFor(state.currentRound, index); const isOpen = Boolean(revealed[team.id]); return <button key={team.id} className={styles.promptCard} style={{ '--team': team.color } as React.CSSProperties} onClick={() => setRevealed((current) => ({ ...current, [team.id]: !current[team.id] }))}><span>{team.name}</span><strong>{isOpen ? prompt.text : '••••••••'}</strong><em>{isOpen ? '탭하여 가리기' : '탭하여 제시어 보기'}</em></button>; })}</div></section>}
 
     {state.stage === 'judge' && <section className={styles.judge}><div className={styles.sectionHead}><div><p>SCORING</p><h2>{state.currentRound + 1}라운드 정답 판정</h2></div><strong>정답 팀은 +5점</strong></div><div className={styles.judgeGrid}>{teams.map((team, index) => { const prompt = promptFor(state.currentRound, index); const success = Boolean(team.teleRounds[state.currentRound]); return <article key={team.id} style={{ '--team': team.color } as React.CSSProperties}><span>{team.name}</span><h3>{prompt.text}</h3><small>인정 예: {prompt.accepted.slice(0, 2).join(' · ')}</small><button className={success ? styles.correct : ''} onClick={() => score.setRoundResult(team.id, state.currentRound, !success)}>{success ? '✓ 정답 +5점' : '○ 오답 0점'}</button><b>누적 {teleScore(team)} / 20</b></article>; })}</div></section>}
 
-    <section className={styles.settings}><div><h3>단계별 시간</h3><p>5개 팀이 동시에 진행하므로 15분 안에 여유 있게 4라운드를 마칠 수 있습니다.</p></div>{(['draw1','guess1','draw2','finalGuess'] as const).map((key) => <label key={key}>{TELESTRATION_STAGE_META[key].title}<input type="number" min={10} max={90} value={state.durations[key]} onChange={(event) => commit((draft) => { draft.durations[key] = Math.max(10, Math.min(90, Number(event.target.value))); })} />초</label>)}</section>
+    <section className={styles.settings}><div><h3>단계별 시간</h3><p>5개 팀 동시 진행 · 역할은 라운드마다 자동 회전합니다.</p></div>{(['draw1','guess1','draw2','finalGuess'] as const).map((key) => <label key={key}>{TELESTRATION_STAGE_META[key].title}<input type="number" min={10} max={90} value={state.durations[key]} onChange={(event) => commit((draft) => { draft.durations[key] = Math.max(10, Math.min(90, Number(event.target.value))); })} />초</label>)}</section>
   </main>;
 }
 
@@ -291,21 +316,23 @@ function Display({ live, score }: { live: LiveStore; score: ScoreStore }) {
   const state = live.state;
   const now = useClock();
   const meta = TELESTRATION_STAGE_META[state.stage];
+  const instruction = stageInstruction(state);
   const remaining = stageRemaining(state, now);
   const overallRemaining = sessionRemaining(state, now);
   const teams = score.state.teams.slice(0, 5);
+  const roles = roleOrder(state.currentRound);
 
   if (!live.ready || !score.ready) return <main className={styles.display}><div className={styles.displayLoading}>텔레스트레이션 준비 중…</div></main>;
   if (state.stage === 'finished') return <main className={styles.display}><section className={styles.finish}><p>TELESTRATION COMPLETE</p><h1>텔레스트레이션 종료!</h1><div>{teams.map((team) => <article key={team.id} style={{ '--team': team.color } as React.CSSProperties}><span>{team.name}</span><strong>{teleScore(team)}</strong><em>/ 20</em></article>)}</div><small>잠시 후 다음 게임으로 이동합니다.</small></section></main>;
   if (state.stage === 'judge') return <main className={styles.display}><section className={styles.displayJudge}><header><p>ROUND {state.currentRound + 1} · 정답 확인</p><h1>처음 제시어는?</h1></header><div>{teams.map((team, index) => { const success = Boolean(team.teleRounds[state.currentRound]); return <article key={team.id} style={{ '--team': team.color } as React.CSSProperties}><span>{team.name}</span><h2>{promptFor(state.currentRound, index).text}</h2><b className={success ? styles.resultCorrect : ''}>{success ? '✓ 정답 +5' : '판정 대기 / 0점'}</b></article>; })}</div></section></main>;
 
-  return <main className={styles.display}><section className={styles.displayGame}><div className={styles.displayTop}><span>ROUND {state.currentRound + 1} / 4</span><span>전체 {formatCountdown(overallRemaining)}</span></div><p>{state.stage === 'setup' ? 'TELESTRATION' : meta.title}</p><h1>{state.stage === 'setup' ? '텔레스트레이션' : meta.instruction}</h1>{state.stage === 'ready' ? <div className={styles.readyMark}>각 팀 1번만 제시어를 확인하세요</div> : state.stage === 'setup' ? <div className={styles.readyMark}>잠시 후 시작합니다</div> : <div className={state.timerStatus === 'expired' ? styles.displayTimerExpired : styles.displayTimer}>{formatCountdown(remaining)}</div>}<footer>{state.timerStatus === 'expired' ? '시간 종료! 손을 멈추고 다음 안내를 기다려 주세요.' : state.stage === 'draw1' || state.stage === 'draw2' ? '글자 · 숫자 · 말로 설명하기 금지' : '앞 단계 결과만 보고 진행합니다.'}</footer></section></main>;
+  return <main className={styles.display}><section className={styles.displayGame}><div className={styles.displayTop}><span>ROUND {state.currentRound + 1} / 4 · {roles.join(' → ')}</span><span>전체 {formatCountdown(overallRemaining)}</span></div><p>{state.stage === 'setup' ? 'TELESTRATION' : meta.title}</p><h1>{state.stage === 'setup' ? '텔레스트레이션' : instruction}</h1>{state.stage === 'ready' ? <div className={styles.readyMark}>각 팀 {roles[0]}번만 제시어를 확인하세요</div> : state.stage === 'setup' ? <div className={styles.readyMark}>잠시 후 시작합니다</div> : <div className={state.timerStatus === 'expired' ? styles.displayTimerExpired : styles.displayTimer}>{formatCountdown(remaining)}</div>}<footer>{state.timerStatus === 'expired' ? '시간 종료! 손을 멈추고 다음 안내를 기다려 주세요.' : state.stage === 'draw1' || state.stage === 'draw2' ? '글자 · 숫자 · 말로 설명하기 금지' : '앞 단계 결과만 보고 진행합니다.'}</footer></section></main>;
 }
 
 export function TelestrationApp({ mode }: { mode: 'admin' | 'display' }) {
   const live = useTelestrationStore();
   const score = useScoreStore();
-  if (!live.ready && mode === 'admin') return <main className={styles.loading}>텔레스트레이션 상태를 불러오는 중…</main>;
+  if (mode === 'admin' && (!live.ready || !score.ready)) return <main className={styles.loading}>텔레스트레이션 상태를 불러오는 중…</main>;
   if (mode === 'display') return <Display live={live} score={score} />;
   return <PinGate pin={score.state.adminPin}><Admin live={live} score={score} /></PinGate>;
 }
