@@ -1,2 +1,9 @@
 import { TelestrationApp } from '@/components/TelestrationApp';
-export default function TelestrationDisplayPage() { return <TelestrationApp mode="display" />; }
+import { TelestrationScoreRibbon } from '@/components/TelestrationScoreRibbon';
+
+export default function TelestrationDisplayPage() {
+  return <>
+    <TelestrationApp mode="display" />
+    <TelestrationScoreRibbon />
+  </>;
+}
