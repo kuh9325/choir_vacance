@@ -56,8 +56,7 @@ export function EventDisplayRouter() {
   }, []);
 
   if (!ready) return <main className={styles.displayLoading}>전광판 준비 중…</main>;
-
-  if (state.programIndex === 0 && !state.charadesComplete) return <CharadesApp mode="display" />;
-  if (state.programIndex === 1) return <TelestrationApp mode="display" />;
+  if (state.activeMode === 'charades') return <CharadesApp mode="display" />;
+  if (state.activeMode === 'telestration') return <TelestrationApp mode="display" />;
   return <ScoreApp mode="display" />;
 }
