@@ -100,7 +100,12 @@ export function TelestrationScoreRibbon() {
         <span className={styles.teamName}><i />{team.name}</span>
         <strong>{teleScore(team)}<small>/20</small></strong>
         <div className={styles.rounds} aria-label={`${team.name} 라운드 결과`}>
-          {Array.from({ length: 4 }, (_, index) => <span key={index} className={team.teleRounds[index] ? styles.success : ''}>{index + 1}</span>)}
+          {Array.from({ length: 4 }, (_, index) => {
+            const success = Boolean(team.teleRounds[index]);
+            const failed = index < live.currentRound && !success;
+            const className = success ? styles.success : failed ? styles.failed : '';
+            return <span key={index} className={className}>{index + 1}</span>;
+          })}
         </div>
       </article>)}
     </div>
