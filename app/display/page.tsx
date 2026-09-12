@@ -1,2 +1,5 @@
-import { ScoreApp } from '@/components/ScoreApp';
-export default function DisplayPage() { return <ScoreApp mode="display" />; }
+import { EventDisplayRouter } from '@/components/EventDisplayRouter';
+
+export default function DisplayPage() {
+  return <EventDisplayRouter />;
+}
