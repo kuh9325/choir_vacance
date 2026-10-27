@@ -10,11 +10,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Publish public static site (30 days)
+      - name: Syntax and source verification
+        run: |
+          node --check app.js
+          node --check 데이터.js
+          test "$(grep -o '"장":' 데이터.js | wc -l)" -eq 6
+          grep -q '데이터.js' index.html
+          grep -q 'app.js' index.html
+      - name: Publish and check public site
         shell: bash
         run: |
           set -euo pipefail
           zip -q site.zip index.html style.css app.js 데이터.js
-          response="$(curl --fail-with-body -sS --retry 2 -X POST https://ship.page/deploy -H 'Content-Type: application/zip' --data-binary @site.zip)"
-          echo "PUBLISH_RESPONSE=$response"
-          echo "$response" >> "$GITHUB_STEP_SUMMARY"
+          response="$(curl --fail-with-body -sS --retry 3 -X POST https://ship.page/deploy -H 'Content-Type: application/zip' --data-binary @site.zip)"
+          url="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
+          echo "PUBLIC_SITE_URL=$url"
+          echo "Public site: $url" >> "$GITHUB_STEP_SUMMARY"
+          for resource in '' 'index.html' 'style.css' 'app.js' '%EB%8D%B0%EC%9D%B4%ED%84%B0.js'; do
+            filename="checked-$(echo "$resource" | tr '/%' '--')"
+            curl --fail-with-body -L --retry 7 --retry-all-errors --retry-delay 3 --max-time 25 -sS "$url$resource" -o "$filename"
+            echo "VERIFIED_RESOURCE=$resource bytes=$(wc -c < "$filename")"
+          done
+          grep -q '2026' checked-index.html
+          grep -q '검색' checked-index.html
+          echo 'PUBLIC_SITE_CHECK=PASS'
+          echo 'All four site resources respond to public HTTPS requests.' >> "$GITHUB_STEP_SUMMARY"
