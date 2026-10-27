@@ -1,0 +1,20 @@
+name: Publish 2026 digital whitepaper
+on:
+  push:
+    branches:
+      - site/2026-digital-whitepaper
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish public static site (30 days)
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -q site.zip index.html style.css app.js 데이터.js
+          response="$(curl --fail-with-body -sS --retry 2 -X POST https://ship.page/deploy -H 'Content-Type: application/zip' --data-binary @site.zip)"
+          echo "PUBLISH_RESPONSE=$response"
+          echo "$response" >> "$GITHUB_STEP_SUMMARY"
